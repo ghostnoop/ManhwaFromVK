@@ -5,16 +5,17 @@ from tortoise import fields, Tortoise
 class VKGroup(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=200, unique=True)
+    newest_created_at_post = fields.BigIntField(default=-1)
 
 
 class Post(Model):
     id = fields.IntField(pk=True)
     post_id = fields.IntField()
-    group = fields.ForeignKeyField("VKGroup", on_delete=fields.CASCADE)
+    group = fields.ForeignKeyField("models.VKGroup", on_delete=fields.CASCADE)
     text = fields.TextField()
     photo = fields.TextField()
     is_sent = fields.BooleanField(default=False)
-    created_at = fields.DatetimeField()
+    created_at = fields.BigIntField()
 
 
 async def db_init():

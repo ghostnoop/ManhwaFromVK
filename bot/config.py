@@ -11,10 +11,8 @@ class Config:
     tg_token: str
 
 
-async def load_config():
+def load_config():
     load_dotenv(find_dotenv())
-
-    await db_init()
 
     tg_bot_token = os.environ.get('TG')
     vk_bot_token = os.environ.get('VK')

@@ -1,6 +1,5 @@
 import asyncio
 import os
-from datetime import datetime
 
 from vkwave.api import API, BotSyncSingleToken, Token
 from vkwave.api.token.token import UserSyncSingleToken
@@ -19,25 +18,46 @@ class VKBot:
     #     print(posts)
 
     async def get_posts(self, vk_group: VKGroup):
-        posts = await self.api.wall.get(domain=vk_group.name)
-        last_exist_post = await Post.filter(group=vk_group).order_by('-id').limit(1).first()
+        posts = await self.api.wall.get(domain=vk_group.name, count=100)
+        last_exist_post = vk_group.newest_created_at_post
         if last_exist_post is None:
             last_exist_post = -1
-        else:
-            last_exist_post = last_exist_post.created_at
-            last_exist_post = int(last_exist_post.timestamp())
 
         new_posts = []
+        max_created_at = -1
+        posts = posts.response.items
         for post in posts:
             created_at = post.date
+            if created_at > max_created_at:
+                max_created_at = created_at
+
             if created_at > last_exist_post:
+                if len(post.attachments) > 0:
+                    attachment = post.attachments[0]
+                    link = attachment.link
+                    url = link.url
+                    title = link.title
+                    text = f'{title}\n\n{post.text}'
+                else:
+                    text = post.text
+                    url = ""
+
                 new_posts.append(Post(post_id=post.id,
                                       group=vk_group,
-                                      text=post.text,
-                                      photo='',
-                                      created_at=datetime.fromtimestamp(created_at)
+                                      text=text,
+                                      photo=url,
+                                      created_at=created_at
                                       ))
-        return new_posts
+        return new_posts, max_created_at
+
+    async def get_posts_from_groups(self):
+        groups = await VKGroup.all()
+        for group in groups:
+            posts, max_created_at = await self.get_posts(group)
+            yield posts
+            group.newest_created_at_post = max_created_at
+            print(group.name, 'date', group.newest_created_at_post)
+            await group.save(update_fields=['newest_created_at_post'])
 
 
 if __name__ == '__main__':
